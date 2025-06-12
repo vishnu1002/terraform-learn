@@ -287,3 +287,120 @@ terraform plan -var-file=terraform.tfvars
 # Force unlock state if needed
 terraform force-unlock <lock_id>
 ```
+
+## Azure Services Architecture
+
+### Complete Infrastructure Overview
+```mermaid
+graph TB
+    %% External Components
+    Internet((Internet)) --> |Public IP| LB[Azure Load Balancer]
+    Internet --> |HTTPS:443| WAF[Web Application Firewall]
+    Internet --> |SSH:22| Bastion[Azure Bastion]
+    
+    %% Resource Group Container
+    subgraph RG[Resource Group: northerntool-rg]
+        %% Virtual Network and Subnets
+        subgraph VNet[Virtual Network: northerntool-vnet<br/>10.0.0.0/16]
+            %% Private Subnet
+            subgraph PrivateSubnet[Private Subnet: northerntool-private-subnet<br/>10.0.1.0/24]
+                %% Compute Resources
+                VM[Ubuntu VM<br/>northerntool-vm] --> |NIC| NSG[Network Security Group]
+                VM --> |OS Disk| OS[Managed Disk<br/>30GB]
+                VM --> |Data Disk| WP[WordPress Disk<br/>10GB]
+                VM --> |Data Disk| DB[MySQL Disk<br/>10GB]
+                
+                %% Monitoring
+                VM --> |Metrics| Monitor[Azure Monitor]
+                VM --> |Logs| LogAnalytics[Log Analytics]
+                
+                %% Backup
+                VM --> |Backup| Backup[Azure Backup]
+                WP --> |Backup| Backup
+                DB --> |Backup| Backup
+            end
+            
+            %% Future Public Subnet
+            subgraph PublicSubnet[Public Subnet<br/>10.0.2.0/24]
+                LB --> |Internal| VM
+                WAF --> |Protected| LB
+            end
+        end
+        
+        %% Security Components
+        subgraph Security[Security Services]
+            NSG --> |Rules| Rules[Security Rules<br/>- SSH:22<br/>- HTTP:80<br/>- HTTPS:443]
+            KeyVault[Key Vault] --> |Secrets| VM
+            KeyVault --> |Keys| DiskEncryption[Disk Encryption]
+            DiskEncryption --> |Encrypts| OS
+            DiskEncryption --> |Encrypts| WP
+            DiskEncryption --> |Encrypts| DB
+        end
+        
+        %% Storage
+        subgraph Storage[Storage Services]
+            DiagStorage[Diagnostic Storage] --> |Logs| VM
+            DiagStorage --> |Metrics| Monitor
+        end
+    end
+    
+    %% Styling
+    classDef azure fill:#0072C6,stroke:#fff,stroke-width:2px,color:#fff
+    classDef security fill:#FF0000,stroke:#fff,stroke-width:2px,color:#fff
+    classDef storage fill:#00A2ED,stroke:#fff,stroke-width:2px,color:#fff
+    classDef compute fill:#107C10,stroke:#fff,stroke-width:2px,color:#fff
+    classDef network fill:#5C2D91,stroke:#fff,stroke-width:2px,color:#fff
+    classDef monitoring fill:#FF8C00,stroke:#fff,stroke-width:2px,color:#fff
+    
+    %% Apply styles
+    class Internet,VM,OS,WP,DB compute
+    class NSG,Rules,KeyVault,DiskEncryption,WAF,Bastion security
+    class DiagStorage,Backup storage
+    class VNet,PrivateSubnet,PublicSubnet,LB network
+    class Monitor,LogAnalytics monitoring
+    class RG azure
+```
+
+### Component Relationships
+- **Network Layer**:
+  - Internet → WAF → Load Balancer → VM
+  - Internet → Bastion → VM (SSH)
+  - All traffic filtered through NSG
+
+- **Security Layer**:
+  - Key Vault manages secrets and encryption keys
+  - Disk Encryption secures all managed disks
+  - WAF protects web traffic
+  - Bastion provides secure SSH access
+
+- **Storage Layer**:
+  - OS Disk (30GB) for system
+  - WordPress Disk (10GB) for content
+  - MySQL Disk (10GB) for database
+  - Diagnostic Storage for logs
+
+- **Monitoring Layer**:
+  - Azure Monitor for metrics
+  - Log Analytics for logs
+  - Diagnostic Storage for persistence
+
+- **Backup Layer**:
+  - Azure Backup for VM and disks
+  - Automated backup schedules
+  - Retention policies
+
+### Service Dependencies
+1. **Primary Dependencies**:
+   - VM depends on VNet, Subnet, NSG
+   - Disks depend on VM
+   - Backup depends on VM and disks
+   - Monitoring depends on VM
+
+2. **Security Dependencies**:
+   - Disk Encryption depends on Key Vault
+   - WAF depends on Load Balancer
+   - Bastion depends on VNet
+
+3. **Monitoring Dependencies**:
+   - Log Analytics depends on Diagnostic Storage
+   - Azure Monitor depends on VM metrics
