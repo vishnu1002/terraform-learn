@@ -26,11 +26,16 @@ graph TB
         end
     end
 
-    style Internet fill:#f9f,stroke:#333,stroke-width:2px
-    style Azure VNet fill:#e1f5fe,stroke:#01579b,stroke-width:2px
-    style Private Subnet fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px
-    style NSG Rules fill:#fff3e0,stroke:#e65100,stroke-width:2px
-    style VM fill:#fce4ec,stroke:#c2185b,stroke-width:2px
+    %% Colors that work in both dark and light modes
+    style Internet fill:#0366d6,stroke:#ffffff,stroke-width:2px,color:#ffffff
+    style Azure VNet fill:#1b1f23,stroke:#0366d6,stroke-width:2px,color:#ffffff
+    style Private Subnet fill:#2ea44f,stroke:#ffffff,stroke-width:2px,color:#ffffff
+    style NSG Rules fill:#d73a49,stroke:#ffffff,stroke-width:2px,color:#ffffff
+    style VM fill:#6f42c1,stroke:#ffffff,stroke-width:2px,color:#ffffff
+    style LB fill:#0366d6,stroke:#ffffff,stroke-width:2px,color:#ffffff
+    style NSG fill:#d73a49,stroke:#ffffff,stroke-width:2px,color:#ffffff
+    style OS,WP,DB fill:#1b1f23,stroke:#ffffff,stroke-width:2px,color:#ffffff
+    style SSH,HTTP,HTTPS fill:#d73a49,stroke:#ffffff,stroke-width:2px,color:#ffffff
 ```
 
 ### Network Flow Diagram
@@ -57,10 +62,15 @@ flowchart LR
         Subnet --> |7. VNet| VNet[Virtual Network]
     end
 
-    style External fill:#f5f5f5,stroke:#333,stroke-width:2px
-    style Azure fill:#e3f2fd,stroke:#1565c0,stroke-width:2px
-    style Rules fill:#fff3e0,stroke:#e65100,stroke-width:2px
-    style IP fill:#ffebee,stroke:#c62828,stroke-width:2px
+    %% Colors that work in both dark and light modes
+    style External fill:#1b1f23,stroke:#0366d6,stroke-width:2px,color:#ffffff
+    style Azure fill:#1b1f23,stroke:#0366d6,stroke-width:2px,color:#ffffff
+    style Rules fill:#1b1f23,stroke:#0366d6,stroke-width:2px,color:#ffffff
+    style IP fill:#d73a49,stroke:#ffffff,stroke-width:2px,color:#ffffff
+    style Client,Admin fill:#2ea44f,stroke:#ffffff,stroke-width:2px,color:#ffffff
+    style Internet,NSG,VM,Subnet,VNet fill:#0366d6,stroke:#ffffff,stroke-width:2px,color:#ffffff
+    style HTTP,SSH fill:#6f42c1,stroke:#ffffff,stroke-width:2px,color:#ffffff
+    style Block fill:#d73a49,stroke:#ffffff,stroke-width:2px,color:#ffffff
 ```
 
 ### IP Address Allocation
@@ -76,10 +86,11 @@ graph TD
         end
     end
 
-    style VNet fill:#e3f2fd,stroke:#1565c0,stroke-width:2px
-    style Subnet fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px
-    style Available fill:#fce4ec,stroke:#c2185b,stroke-width:2px
-    style Reserved1,Reserved2,Reserved3,Reserved4 fill:#fff3e0,stroke:#e65100,stroke-width:2px
+    %% Colors that work in both dark and light modes
+    style VNet fill:#1b1f23,stroke:#0366d6,stroke-width:2px,color:#ffffff
+    style Subnet fill:#1b1f23,stroke:#0366d6,stroke-width:2px,color:#ffffff
+    style Available fill:#2ea44f,stroke:#ffffff,stroke-width:2px,color:#ffffff
+    style Reserved1,Reserved2,Reserved3,Reserved4 fill:#d73a49,stroke:#ffffff,stroke-width:2px,color:#ffffff
 ```
 
 ### Security Rules Flow
@@ -103,12 +114,13 @@ graph TD
         Check3 -->|No| Deny3[Deny HTTPS]
     end
 
-    style NSG fill:#e3f2fd,stroke:#1565c0,stroke-width:2px
-    style Inbound fill:#f5f5f5,stroke:#333,stroke-width:2px
-    style Rule1,Rule2,Rule3 fill:#fff3e0,stroke:#e65100,stroke-width:2px
-    style Check1,Check2,Check3 fill:#ffebee,stroke:#c62828,stroke-width:2px
-    style Allow1,Allow2,Allow3 fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px
-    style Deny1,Deny2,Deny3 fill:#fce4ec,stroke:#c2185b,stroke-width:2px
+    %% Colors that work in both dark and light modes
+    style NSG fill:#1b1f23,stroke:#0366d6,stroke-width:2px,color:#ffffff
+    style Inbound fill:#0366d6,stroke:#ffffff,stroke-width:2px,color:#ffffff
+    style Rule1,Rule2,Rule3 fill:#6f42c1,stroke:#ffffff,stroke-width:2px,color:#ffffff
+    style Check1,Check2,Check3 fill:#d73a49,stroke:#ffffff,stroke-width:2px,color:#ffffff
+    style Allow1,Allow2,Allow3 fill:#2ea44f,stroke:#ffffff,stroke-width:2px,color:#ffffff
+    style Deny1,Deny2,Deny3 fill:#d73a49,stroke:#ffffff,stroke-width:2px,color:#ffffff
 ```
 
 ### Resource Dependencies
