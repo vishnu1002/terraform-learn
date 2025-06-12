@@ -2,26 +2,113 @@
 
 Learning terraform basics
 
-
 # Azure Terraform Infrastructure 
 
-### Network Architecture
+## Network Architecture
+
+### High-Level Network Diagram
+```mermaid
+graph TB
+    Internet((Internet)) --> |Public IP| LB[Azure Load Balancer]
+    
+    subgraph Azure VNet [Azure Virtual Network 10.0.0.0/16]
+        subgraph Private Subnet [Private Subnet 10.0.1.0/24]
+            VM[Ubuntu VM<br/>10.0.1.x] --> |NIC| NSG[Network Security Group]
+            VM --> |OS Disk| OS[Managed Disk]
+            VM --> |Data Disk| WP[WordPress Disk]
+            VM --> |Data Disk| DB[MySQL Disk]
+        end
+        
+        subgraph NSG Rules [Security Rules]
+            SSH[SSH:22<br/>Restricted IPs] --> NSG
+            HTTP[HTTP:80<br/>Any] --> NSG
+            HTTPS[HTTPS:443<br/>Any] --> NSG
+        end
+    end
+
+    style Internet fill:#f9f,stroke:#333,stroke-width:2px
+    style Azure VNet fill:#e1f5fe,stroke:#01579b,stroke-width:2px
+    style Private Subnet fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px
+    style NSG Rules fill:#fff3e0,stroke:#e65100,stroke-width:2px
+    style VM fill:#fce4ec,stroke:#c2185b,stroke-width:2px
 ```
-[Internet] → [Azure VNet (10.0.0.0/16)]
-                    │
-                    ├── [Private Subnet (10.0.1.0/24)]
-                    │       │
-                    │       ├── [VM (10.0.1.x)]
-                    │       │   ├── [OS Disk]
-                    │       │   ├── [WordPress Data Disk]
-                    │       │   └── [MySQL Data Disk]
-                    │       │
-                    │       └── [NSG Rules]
-                    │           ├── SSH (22) ← [Restricted IPs]
-                    │           ├── HTTP (80) ← [Any]
-                    │           └── HTTPS (443) ← [Any]
-                    │
-                    └── [Future: Public Subnet (if needed)]
+
+### Network Flow Diagram
+```mermaid
+flowchart LR
+    subgraph External [External Access]
+        Client[Client] --> |1. HTTP/HTTPS| Internet
+        Admin[Admin] --> |2. SSH| Internet
+    end
+
+    subgraph Azure [Azure Infrastructure]
+        Internet --> |3. Traffic| NSG[Network Security Group]
+        
+        subgraph Rules [NSG Rules Evaluation]
+            NSG --> |4a. Port 80/443| HTTP[HTTP/HTTPS Rule]
+            NSG --> |4b. Port 22| SSH[SSH Rule]
+            HTTP --> |5a. Allowed| VM[Virtual Machine]
+            SSH --> |5b. IP Check| IP{IP Allowed?}
+            IP --> |Yes| VM
+            IP --> |No| Block[Blocked]
+        end
+
+        VM --> |6. Internal| Subnet[Private Subnet]
+        Subnet --> |7. VNet| VNet[Virtual Network]
+    end
+
+    style External fill:#f5f5f5,stroke:#333,stroke-width:2px
+    style Azure fill:#e3f2fd,stroke:#1565c0,stroke-width:2px
+    style Rules fill:#fff3e0,stroke:#e65100,stroke-width:2px
+    style IP fill:#ffebee,stroke:#c62828,stroke-width:2px
+```
+
+### IP Address Allocation
+```mermaid
+graph TD
+    subgraph VNet [Virtual Network 10.0.0.0/16]
+        subgraph Subnet [Private Subnet 10.0.1.0/24]
+            Reserved1[10.0.1.0<br/>Network Address] --> Available
+            Reserved2[10.0.1.1<br/>Azure Gateway] --> Available
+            Reserved3[10.0.1.2-3<br/>Azure DNS] --> Available
+            Available[10.0.1.4-254<br/>Available for VMs] --> Reserved4
+            Reserved4[10.0.1.255<br/>Broadcast] --> Available
+        end
+    end
+
+    style VNet fill:#e3f2fd,stroke:#1565c0,stroke-width:2px
+    style Subnet fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px
+    style Available fill:#fce4ec,stroke:#c2185b,stroke-width:2px
+    style Reserved1,Reserved2,Reserved3,Reserved4 fill:#fff3e0,stroke:#e65100,stroke-width:2px
+```
+
+### Security Rules Flow
+```mermaid
+graph TD
+    subgraph NSG [Network Security Group Rules]
+        direction TB
+        Inbound[Inbound Traffic] --> Rule1[Rule 100: SSH]
+        Inbound --> Rule2[Rule 110: HTTP]
+        Inbound --> Rule3[Rule 120: HTTPS]
+        
+        Rule1 --> Check1{Source IP<br/>Allowed?}
+        Rule2 --> Check2{Port 80?}
+        Rule3 --> Check3{Port 443?}
+        
+        Check1 -->|Yes| Allow1[Allow SSH]
+        Check1 -->|No| Deny1[Deny SSH]
+        Check2 -->|Yes| Allow2[Allow HTTP]
+        Check2 -->|No| Deny2[Deny HTTP]
+        Check3 -->|Yes| Allow3[Allow HTTPS]
+        Check3 -->|No| Deny3[Deny HTTPS]
+    end
+
+    style NSG fill:#e3f2fd,stroke:#1565c0,stroke-width:2px
+    style Inbound fill:#f5f5f5,stroke:#333,stroke-width:2px
+    style Rule1,Rule2,Rule3 fill:#fff3e0,stroke:#e65100,stroke-width:2px
+    style Check1,Check2,Check3 fill:#ffebee,stroke:#c62828,stroke-width:2px
+    style Allow1,Allow2,Allow3 fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px
+    style Deny1,Deny2,Deny3 fill:#fce4ec,stroke:#c2185b,stroke-width:2px
 ```
 
 ### Resource Dependencies
