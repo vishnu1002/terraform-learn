@@ -25,7 +25,6 @@ graph TB
     %% External Components
     Internet((Internet)) --> |Public IP| LB[Azure Load Balancer]
     Internet --> |HTTPS:443| WAF[Web Application Firewall]
-    Internet --> |SSH:22|
     
     %% Resource Group Container
     subgraph RG[Resource Group: northerntool-rg]
