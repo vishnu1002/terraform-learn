@@ -4,126 +4,7 @@ Learning terraform basics
 
 # Azure Terraform Infrastructure 
 
-## Network Architecture
-
-### High-Level Network Diagram
-```mermaid
-graph TB
-    Internet((Internet)) --> |Public IP| LB[Azure Load Balancer]
-    
-    subgraph Azure VNet [Azure Virtual Network 10.0.0.0/16]
-        subgraph Private Subnet [Private Subnet 10.0.1.0/24]
-            VM[Ubuntu VM<br/>10.0.1.x] --> |NIC| NSG[Network Security Group]
-            VM --> |OS Disk| OS[Managed Disk]
-            VM --> |Data Disk| WP[WordPress Disk]
-            VM --> |Data Disk| DB[MySQL Disk]
-        end
-        
-        subgraph NSG Rules [Security Rules]
-            SSH[SSH:22<br/>Restricted IPs] --> NSG
-            HTTP[HTTP:80<br/>Any] --> NSG
-            HTTPS[HTTPS:443<br/>Any] --> NSG
-        end
-    end
-
-    %% Colors that work in both dark and light modes
-    style Internet fill:#0366d6,stroke:#ffffff,stroke-width:2px,color:#ffffff
-    style Azure VNet fill:#1b1f23,stroke:#0366d6,stroke-width:2px,color:#ffffff
-    style Private Subnet fill:#2ea44f,stroke:#ffffff,stroke-width:2px,color:#ffffff
-    style NSG Rules fill:#d73a49,stroke:#ffffff,stroke-width:2px,color:#ffffff
-    style VM fill:#6f42c1,stroke:#ffffff,stroke-width:2px,color:#ffffff
-    style LB fill:#0366d6,stroke:#ffffff,stroke-width:2px,color:#ffffff
-    style NSG fill:#d73a49,stroke:#ffffff,stroke-width:2px,color:#ffffff
-    style OS,WP,DB fill:#1b1f23,stroke:#ffffff,stroke-width:2px,color:#ffffff
-    style SSH,HTTP,HTTPS fill:#d73a49,stroke:#ffffff,stroke-width:2px,color:#ffffff
-```
-
-### Network Flow Diagram
-```mermaid
-flowchart LR
-    subgraph External [External Access]
-        Client[Client] --> |1. HTTP/HTTPS| Internet
-        Admin[Admin] --> |2. SSH| Internet
-    end
-
-    subgraph Azure [Azure Infrastructure]
-        Internet --> |3. Traffic| NSG[Network Security Group]
-        
-        subgraph Rules [NSG Rules Evaluation]
-            NSG --> |4a. Port 80/443| HTTP[HTTP/HTTPS Rule]
-            NSG --> |4b. Port 22| SSH[SSH Rule]
-            HTTP --> |5a. Allowed| VM[Virtual Machine]
-            SSH --> |5b. IP Check| IP{IP Allowed?}
-            IP --> |Yes| VM
-            IP --> |No| Block[Blocked]
-        end
-
-        VM --> |6. Internal| Subnet[Private Subnet]
-        Subnet --> |7. VNet| VNet[Virtual Network]
-    end
-
-    %% Colors that work in both dark and light modes
-    style External fill:#1b1f23,stroke:#0366d6,stroke-width:2px,color:#ffffff
-    style Azure fill:#1b1f23,stroke:#0366d6,stroke-width:2px,color:#ffffff
-    style Rules fill:#1b1f23,stroke:#0366d6,stroke-width:2px,color:#ffffff
-    style IP fill:#d73a49,stroke:#ffffff,stroke-width:2px,color:#ffffff
-    style Client,Admin fill:#2ea44f,stroke:#ffffff,stroke-width:2px,color:#ffffff
-    style Internet,NSG,VM,Subnet,VNet fill:#0366d6,stroke:#ffffff,stroke-width:2px,color:#ffffff
-    style HTTP,SSH fill:#6f42c1,stroke:#ffffff,stroke-width:2px,color:#ffffff
-    style Block fill:#d73a49,stroke:#ffffff,stroke-width:2px,color:#ffffff
-```
-
-### IP Address Allocation
-```mermaid
-graph TD
-    subgraph VNet [Virtual Network 10.0.0.0/16]
-        subgraph Subnet [Private Subnet 10.0.1.0/24]
-            Reserved1[10.0.1.0<br/>Network Address] --> Available
-            Reserved2[10.0.1.1<br/>Azure Gateway] --> Available
-            Reserved3[10.0.1.2-3<br/>Azure DNS] --> Available
-            Available[10.0.1.4-254<br/>Available for VMs] --> Reserved4
-            Reserved4[10.0.1.255<br/>Broadcast] --> Available
-        end
-    end
-
-    %% Colors that work in both dark and light modes
-    style VNet fill:#1b1f23,stroke:#0366d6,stroke-width:2px,color:#ffffff
-    style Subnet fill:#1b1f23,stroke:#0366d6,stroke-width:2px,color:#ffffff
-    style Available fill:#2ea44f,stroke:#ffffff,stroke-width:2px,color:#ffffff
-    style Reserved1,Reserved2,Reserved3,Reserved4 fill:#d73a49,stroke:#ffffff,stroke-width:2px,color:#ffffff
-```
-
-### Security Rules Flow
-```mermaid
-graph TD
-    subgraph NSG [Network Security Group Rules]
-        direction TB
-        Inbound[Inbound Traffic] --> Rule1[Rule 100: SSH]
-        Inbound --> Rule2[Rule 110: HTTP]
-        Inbound --> Rule3[Rule 120: HTTPS]
-        
-        Rule1 --> Check1{Source IP<br/>Allowed?}
-        Rule2 --> Check2{Port 80?}
-        Rule3 --> Check3{Port 443?}
-        
-        Check1 -->|Yes| Allow1[Allow SSH]
-        Check1 -->|No| Deny1[Deny SSH]
-        Check2 -->|Yes| Allow2[Allow HTTP]
-        Check2 -->|No| Deny2[Deny HTTP]
-        Check3 -->|Yes| Allow3[Allow HTTPS]
-        Check3 -->|No| Deny3[Deny HTTPS]
-    end
-
-    %% Colors that work in both dark and light modes
-    style NSG fill:#1b1f23,stroke:#0366d6,stroke-width:2px,color:#ffffff
-    style Inbound fill:#0366d6,stroke:#ffffff,stroke-width:2px,color:#ffffff
-    style Rule1,Rule2,Rule3 fill:#6f42c1,stroke:#ffffff,stroke-width:2px,color:#ffffff
-    style Check1,Check2,Check3 fill:#d73a49,stroke:#ffffff,stroke-width:2px,color:#ffffff
-    style Allow1,Allow2,Allow3 fill:#2ea44f,stroke:#ffffff,stroke-width:2px,color:#ffffff
-    style Deny1,Deny2,Deny3 fill:#d73a49,stroke:#ffffff,stroke-width:2px,color:#ffffff
-```
-
-### Resource Dependencies
+## Resource Dependencies
 ```mermaid
 graph TD
     A[Resource Group] --> B[Virtual Network]
@@ -135,6 +16,78 @@ graph TD
     F --> G
     A --> H[Managed Disks]
     G --> H
+```
+
+
+## Complete Infrastructure Overview
+```mermaid
+graph TB
+    %% External Components
+    Internet((Internet)) --> |Public IP| LB[Azure Load Balancer]
+    Internet --> |HTTPS:443| WAF[Web Application Firewall]
+    Internet --> |SSH:22| Bastion[Azure Bastion]
+    
+    %% Resource Group Container
+    subgraph RG[Resource Group: northerntool-rg]
+        %% Virtual Network and Subnets
+        subgraph VNet[Virtual Network: northerntool-vnet<br/>10.0.0.0/16]
+            %% Private Subnet
+            subgraph PrivateSubnet[Private Subnet: northerntool-private-subnet<br/>10.0.1.0/24]
+                %% Compute Resources
+                VM[Ubuntu VM<br/>northerntool-vm] --> |NIC| NSG[Network Security Group]
+                VM --> |OS Disk| OS[Managed Disk<br/>30GB]
+                VM --> |Data Disk| WP[WordPress Disk<br/>10GB]
+                VM --> |Data Disk| DB[MySQL Disk<br/>10GB]
+                
+                %% Monitoring
+                VM --> |Metrics| Monitor[Azure Monitor]
+                VM --> |Logs| LogAnalytics[Log Analytics]
+                
+                %% Backup
+                VM --> |Backup| Backup[Azure Backup]
+                WP --> |Backup| Backup
+                DB --> |Backup| Backup
+            end
+            
+            %% Future Public Subnet
+            subgraph PublicSubnet[Public Subnet<br/>10.0.2.0/24]
+                LB --> |Internal| VM
+                WAF --> |Protected| LB
+            end
+        end
+        
+        %% Security Components
+        subgraph Security[Security Services]
+            NSG --> |Rules| Rules[Security Rules<br/>- SSH:22<br/>- HTTP:80<br/>- HTTPS:443]
+            KeyVault[Key Vault] --> |Secrets| VM
+            KeyVault --> |Keys| DiskEncryption[Disk Encryption]
+            DiskEncryption --> |Encrypts| OS
+            DiskEncryption --> |Encrypts| WP
+            DiskEncryption --> |Encrypts| DB
+        end
+        
+        %% Storage
+        subgraph Storage[Storage Services]
+            DiagStorage[Diagnostic Storage] --> |Logs| VM
+            DiagStorage --> |Metrics| Monitor
+        end
+    end
+    
+    %% Styling
+    classDef azure fill:#0072C6,stroke:#fff,stroke-width:2px,color:#fff
+    classDef security fill:#FF0000,stroke:#fff,stroke-width:2px,color:#fff
+    classDef storage fill:#00A2ED,stroke:#fff,stroke-width:2px,color:#fff
+    classDef compute fill:#107C10,stroke:#fff,stroke-width:2px,color:#fff
+    classDef network fill:#5C2D91,stroke:#fff,stroke-width:2px,color:#fff
+    classDef monitoring fill:#FF8C00,stroke:#fff,stroke-width:2px,color:#fff
+    
+    %% Apply styles
+    class Internet,VM,OS,WP,DB compute
+    class NSG,Rules,KeyVault,DiskEncryption,WAF,Bastion security
+    class DiagStorage,Backup storage
+    class VNet,PrivateSubnet,PublicSubnet,LB network
+    class Monitor,LogAnalytics monitoring
+    class RG azure
 ```
 
 ## Detailed Resource Analysis
@@ -286,79 +239,6 @@ terraform plan -var-file=terraform.tfvars
 
 # Force unlock state if needed
 terraform force-unlock <lock_id>
-```
-
-## Azure Services Architecture
-
-### Complete Infrastructure Overview
-```mermaid
-graph TB
-    %% External Components
-    Internet((Internet)) --> |Public IP| LB[Azure Load Balancer]
-    Internet --> |HTTPS:443| WAF[Web Application Firewall]
-    Internet --> |SSH:22| Bastion[Azure Bastion]
-    
-    %% Resource Group Container
-    subgraph RG[Resource Group: northerntool-rg]
-        %% Virtual Network and Subnets
-        subgraph VNet[Virtual Network: northerntool-vnet<br/>10.0.0.0/16]
-            %% Private Subnet
-            subgraph PrivateSubnet[Private Subnet: northerntool-private-subnet<br/>10.0.1.0/24]
-                %% Compute Resources
-                VM[Ubuntu VM<br/>northerntool-vm] --> |NIC| NSG[Network Security Group]
-                VM --> |OS Disk| OS[Managed Disk<br/>30GB]
-                VM --> |Data Disk| WP[WordPress Disk<br/>10GB]
-                VM --> |Data Disk| DB[MySQL Disk<br/>10GB]
-                
-                %% Monitoring
-                VM --> |Metrics| Monitor[Azure Monitor]
-                VM --> |Logs| LogAnalytics[Log Analytics]
-                
-                %% Backup
-                VM --> |Backup| Backup[Azure Backup]
-                WP --> |Backup| Backup
-                DB --> |Backup| Backup
-            end
-            
-            %% Future Public Subnet
-            subgraph PublicSubnet[Public Subnet<br/>10.0.2.0/24]
-                LB --> |Internal| VM
-                WAF --> |Protected| LB
-            end
-        end
-        
-        %% Security Components
-        subgraph Security[Security Services]
-            NSG --> |Rules| Rules[Security Rules<br/>- SSH:22<br/>- HTTP:80<br/>- HTTPS:443]
-            KeyVault[Key Vault] --> |Secrets| VM
-            KeyVault --> |Keys| DiskEncryption[Disk Encryption]
-            DiskEncryption --> |Encrypts| OS
-            DiskEncryption --> |Encrypts| WP
-            DiskEncryption --> |Encrypts| DB
-        end
-        
-        %% Storage
-        subgraph Storage[Storage Services]
-            DiagStorage[Diagnostic Storage] --> |Logs| VM
-            DiagStorage --> |Metrics| Monitor
-        end
-    end
-    
-    %% Styling
-    classDef azure fill:#0072C6,stroke:#fff,stroke-width:2px,color:#fff
-    classDef security fill:#FF0000,stroke:#fff,stroke-width:2px,color:#fff
-    classDef storage fill:#00A2ED,stroke:#fff,stroke-width:2px,color:#fff
-    classDef compute fill:#107C10,stroke:#fff,stroke-width:2px,color:#fff
-    classDef network fill:#5C2D91,stroke:#fff,stroke-width:2px,color:#fff
-    classDef monitoring fill:#FF8C00,stroke:#fff,stroke-width:2px,color:#fff
-    
-    %% Apply styles
-    class Internet,VM,OS,WP,DB compute
-    class NSG,Rules,KeyVault,DiskEncryption,WAF,Bastion security
-    class DiagStorage,Backup storage
-    class VNet,PrivateSubnet,PublicSubnet,LB network
-    class Monitor,LogAnalytics monitoring
-    class RG azure
 ```
 
 ### Component Relationships
